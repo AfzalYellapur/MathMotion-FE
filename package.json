@@ -15,6 +15,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "ansi-to-html": "^0.7.2",
     "autoprefixer": "^10.4.21",
+    "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",

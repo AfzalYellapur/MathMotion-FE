@@ -19,7 +19,7 @@ function AppContent() {
           <Route path="/" element={<Landing />} />
           <Route path="/signin" element={<SigninPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path='/workspace' element={<Workspace />} />
+          <Route path='/workspace/:sessionId' element={<Workspace />} />
         </Routes>
       </AnimatePresence>
     </>
