@@ -48,6 +48,7 @@ const BlockingOverlay = ({ isVisible, status, onReconnect }: BlockingOverlayProp
                         <>
                             <p className="text-lg font-semibold text-white/90 mb-4">Server timed out. Due to inactivity</p>
                             <GlassyButton
+                            background='bg-[#1e1e1e]'
                                 onClick={onReconnect}
                             >
                                 Reconnect

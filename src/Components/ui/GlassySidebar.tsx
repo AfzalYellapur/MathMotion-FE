@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassyButton from './GlassyButton';
-
-export default function GlassySidebar  () {
+import { useLocation } from 'react-router-dom';
+export default function GlassySidebar() {
+    const location = useLocation()
+    const hideNavRoutes = ['/workspace']
+    const isWorkSpacePage = hideNavRoutes.includes(location.pathname)
     const mockChats = ["Glass UI Discussion", "Framer Motion Tips", "React Best Practices", "Tailwind CSS Tricks"];
     const [isOpen, setIsOpen] = useState(false);
     return (
@@ -10,7 +13,7 @@ export default function GlassySidebar  () {
             {/* Hover trigger area */}
             <div
                 onMouseEnter={() => setIsOpen(true)}
-                className="fixed top-0 left-0 h-full w-4 z-30"
+                className={`fixed top-0 left-0 h-full  ${isWorkSpacePage ? "w-4" : "w-16"} z-30`}
             />
 
             {/* Sidebar Icon Trigger */}
@@ -22,9 +25,8 @@ export default function GlassySidebar  () {
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3 }}
                         onMouseEnter={() => setIsOpen(true)}
-                        className="fixed bottom-4 left-4 w-12 h-12 rounded-full flex items-center justify-center
-                             bg-zinc-900/50 backdrop-blur-md border border-white/10 
-                             shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.15)]"
+                        className={` ${isWorkSpacePage ? "hidden" : ""} fixed bottom-4 left-4 w-12 h-12 rounded-full flex items-center justify-center bg-zinc-900/50 backdrop-blur-md border border-white/10 
+                             shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.15)] `}
                     >
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white/60">
                             <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
