@@ -1,78 +1,278 @@
-import { useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
-import useBinderKernel from "../../hooks/useBinderKernel";
-import useWebSocketHandler from "../../hooks/useWebSocketHandler";
-import useCodeExecution from "../../hooks/useCodeExecution";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import ChatPanel from "./ChatPanel/ChatPanel";
 import MainPanel from "./MainPanel/MainPanel";
-import type { ViewType } from "./types";
+import type { ViewType, ChatMessage, RenderStatus } from "./types";
 import PageTransition from "../ui/PageTransition";
-import { createChatResponseApi, followUpChatApi } from "../../api/chat";
+import { sendChat, saveCode, buildProject, cancelRender } from "../../api/projects";
+import { activateProject } from "../../api/projects";
 
 function Workspace() {
   const location = useLocation();
-  const { sessionId } = useParams<{ sessionId: string }>();
-  const initialPrompt = location.state?.promt || "";
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  const initialPrompt = location.state?.prompt || "";
+
   const [view, setView] = useState<ViewType>("editor");
-  // const [chatInput, setChatInput] = useState(initialPrompt);
-  // const [messages, setMessages] = useState<Message[]>([]);
   const [prompt, setPrompt] = useState("");
   const [userCode, setUserCode] = useState("");
-  const [videoData, setVideoData] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
-  const { ws, status, connect } = useBinderKernel();
-  const { executeCode } = useCodeExecution({ ws });
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [fileClass, setFileClass] = useState<string>("MainScene");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [renderStatus, setRenderStatus] = useState<RenderStatus>("IDLE");
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  // Handle WebSocket messages
-  useWebSocketHandler({
-    ws,
-    onVideoData: (data) => {
-      setVideoData(data);
-      setIsGenerating(false); // This will run every time
-    },
-    onCodeError: (error) => {
-      setCodeError(error);
-      setIsGenerating(false); // This will run every time
-    },
-  });
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const initialPromptSentRef = useRef(false);
 
-  const sendPrompt = async (prompt: string) => {
-    if (!prompt) {
-      alert("Prompt is empty. Cannot send.");
-      return;
-    } else {
-      const response = await createChatResponseApi(prompt, sessionId || "");
-      console.log(response.data);
-      if (response.status !== 200) {
-        alert("Failed to send prompt. Please try again.");
-      } else {
-        setUserCode(response?.data?.response?.manim_code || "");
+  // Load project data on mount
+  useEffect(() => {
+    if (!projectId) return;
+
+    // Reset state from previous project
+    setVideoUrl(null);
+    setCodeError(null);
+    setRenderStatus("IDLE");
+    setView("editor");
+
+    const loadProject = async () => {
+      try {
+        // Activate this project
+        const response = await activateProject(projectId);
+        const project = response.data.project;
+        if (project) {
+          setUserCode(project.currentCode || "");
+          setMessages(project.chatHistory || []);
+          // Extract fileClass from last AI message if available
+          const lastAiMsg = [...(project.chatHistory || [])].reverse().find((m: ChatMessage) => m.role === 'ai' && m.code);
+          if (lastAiMsg) {
+            // Try to extract class name from code
+            const classMatch = lastAiMsg.code?.match(/class\s+(\w+)\s*\(/);
+            if (classMatch) {
+              setFileClass(classMatch[1]);
+            }
+          }
+        }
+      } catch (err: any) {
+        // If project not found, try fetching projects list
+        if (err.response?.status === 404) {
+          navigate('/');
+        }
+      }
+    };
+
+    loadProject();
+  }, [projectId, navigate]);
+
+  // Send initial prompt if navigated from landing page
+  useEffect(() => {
+    if (initialPrompt && projectId && !initialPromptSentRef.current) {
+      initialPromptSentRef.current = true;
+      handleSendPrompt(initialPrompt);
+    }
+  }, [initialPrompt, projectId]);
+
+  // Cleanup SSE on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Send a chat prompt
+  const handleSendPrompt = async (promptText?: string) => {
+    const text = promptText || prompt;
+    if (!text || !projectId) return;
+
+    setView("editor");
+
+    // Add user message to chat immediately
+    const userMsg: ChatMessage = { role: 'user', prompt: text };
+    setMessages(prev => [...prev, userMsg]);
+    setPrompt("");
+    setIsChatLoading(true);
+
+    try {
+      const response = await sendChat(projectId, text);
+      const { explanation, code, fileClass: fc } = response.data;
+
+      // Add AI response to chat
+      const aiMsg: ChatMessage = { role: 'ai', prompt: explanation, code };
+      setMessages(prev => [...prev, aiMsg]);
+
+      // Update code in editor
+      if (code) {
+        setUserCode(code);
       }
 
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "prompt", data: prompt }));
-      } else {
-        console.error("WebSocket is not open. Cannot send prompt.");
+      // Store fileClass for build
+      if (fc) {
+        setFileClass(fc);
       }
+    } catch (err: any) {
+      const message = err.response?.data?.error;
+      if (err.response?.status === 429) {
+        const aiMsg: ChatMessage = { role: 'ai', prompt: '⚠️ Rate limited. Please wait a minute before sending another message.' };
+        setMessages(prev => [...prev, aiMsg]);
+      } else if (message !== 'Generation was cancelled') {
+        const aiMsg: ChatMessage = { role: 'ai', prompt: `❌ Error: ${message || 'Failed to generate code'}` };
+        setMessages(prev => [...prev, aiMsg]);
+      }
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
-  const handleFollowUpPrompt = async () => {
+  // Debounced Auto-Save
+  const handleCodeChange = useCallback((code: string) => {
+    setUserCode(code);
+    setSaveStatus('idle');
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = setTimeout(async () => {
+      if (projectId && code) {
+        setSaveStatus('saving');
+        try {
+          // Promise.all ensures the "saving" state shows for a minimum of 500ms
+          await Promise.all([
+            saveCode(projectId, code),
+            new Promise(resolve => setTimeout(resolve, 500))
+          ]);
+          setSaveStatus('saved');
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (err) {
+          console.error('Failed to save code:', err);
+          setSaveStatus('idle');
+        }
+      }
+    }, 1000);
+  }, [projectId]);
+
+  // New Manual Save Handler
+  const handleManualSave = async () => {
+    if (!projectId || !userCode || saveStatus === 'saving') return;
+
+    // Clear any pending auto-saves so we don't save twice
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    setSaveStatus('saving');
     try {
-      const response = await followUpChatApi(prompt, sessionId || "");
-      console.log(response.data);
-      if (response.status !== 200) {
-        alert("Failed to send follow-up message. Please try again.");
+      await Promise.all([
+        saveCode(projectId, userCode),
+        new Promise(resolve => setTimeout(resolve, 500))
+      ]);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to manually save code:', err);
+      setSaveStatus('idle');
+    }
+  };
+
+  // Build / Render
+  const handleBuild = async () => {
+    if (!projectId || !userCode) return;
+
+    setRenderStatus("PENDING");
+    setVideoUrl(null);
+    setCodeError(null);
+    setView("preview");
+
+    try {
+      await buildProject(projectId, fileClass);
+
+      // Open SSE stream for render status
+      openStatusStream();
+    } catch (err: any) {
+      const message = err.response?.data?.error;
+      if (err.response?.status === 429) {
+        setCodeError(message || 'A render job is already processing.');
+      } else {
+        setCodeError(message || 'Failed to start build');
       }
-      setUserCode(response?.data?.response?.manim_code || "");
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "followup", data: prompt }));
+      setRenderStatus("FAILED");
+    }
+  };
+
+  // SSE stream for render status
+  const openStatusStream = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const eventSource = new EventSource(
+      `${backendUrl}/api/projects/${projectId}/status/stream`,
+      { withCredentials: true }
+    );
+    eventSourceRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.error) {
+        setCodeError(data.error);
+        setRenderStatus("FAILED");
+        eventSource.close();
+        return;
       }
-    } catch (error) {
-      console.error("Error sending follow-up message:", error);
-      alert("Failed to send follow-up message. Please try again.");
-      return;
+
+      switch (data.status) {
+        case 'PENDING':
+          setRenderStatus("PENDING");
+          break;
+        case 'PROCESSING':
+          setRenderStatus("PROCESSING");
+          break;
+        case 'COMPLETED':
+          setRenderStatus("COMPLETED");
+          setVideoUrl(data.videoUrl);
+          eventSource.close();
+          break;
+        case 'FAILED':
+          setRenderStatus("FAILED");
+          setCodeError(data.errorMessage || 'Render failed');
+          eventSource.close();
+          break;
+        case 'CANCELLED':
+          setRenderStatus("CANCELLED");
+          eventSource.close();
+          break;
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error('SSE connection error');
+      eventSource.close();
+      // Don't set FAILED — might just be a network blip
+      // The user can click Build again
+    };
+  };
+
+  // Cancel render
+  const handleCancelRender = async () => {
+    if (!projectId) return;
+    try {
+      await cancelRender(projectId);
+      setRenderStatus("CANCELLED");
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    } catch (err) {
+      console.error('Failed to cancel render:', err);
     }
   };
 
@@ -82,28 +282,24 @@ function Workspace() {
         <ChatPanel
           setPrompt={setPrompt}
           prompt={prompt}
-          onClick={handleFollowUpPrompt}
+          onClick={() => handleSendPrompt()}
+          messages={messages}
+          isLoading={isChatLoading}
         />
 
         <MainPanel
           view={view}
           onViewChange={setView}
-          status={status}
-          onReconnect={connect}
-          isGenerating={isGenerating}
-          onGenerate={() => {
-            if (status === "Kernel Ready") {
-              setIsGenerating(true);
-              setVideoData(null);
-              setCodeError(null);
-              executeCode(userCode);
-              setView("preview");
-            }
-          }}
+          onBuild={handleBuild}
           userCode={userCode}
-          onCodeChange={setUserCode}
-          videoData={videoData}
+          onCodeChange={handleCodeChange}
+          videoUrl={videoUrl}
           codeError={codeError}
+          renderStatus={renderStatus}
+          isChatLoading={isChatLoading}
+          onCancelRender={handleCancelRender}
+          saveStatus={saveStatus}
+          onManualSave={handleManualSave}
         />
       </div>
     </PageTransition>

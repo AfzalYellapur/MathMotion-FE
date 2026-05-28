@@ -1,26 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-
-// --- Type Definitions ---
-type Message = {
-    role: 'user' | 'ai';
-    text: string;
-};
+import type { ChatMessage } from '../Workspace/types';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 // --- Main App Component ---
-export default function GlassyChatInterface() {
-    const [messages] = useState<Message[]>([
-        { role: 'ai', text: 'Hello! How can I help you today?' },
-        { role: 'user', text: 'Tell me about the glass UI theme we have here.' },
-        { role: 'ai', text: 'Of course. It\'s a frosted glass effect using semi-transparent backgrounds and a backdrop blur. It gives the interface a modern, layered feel. The buttons and other elements have subtle 3D effects and magnification animations on hover to make them more interactive.' },
-        { role: 'ai', text: 'Of course. It\'s a frosted glass effect using semi-transparent backgrounds and a backdrop blur. It gives the interface a modern, layered feel. The buttons and other elements have subtle 3D effects and magnification animations on hover to make them more interactive.' },
-        { role: 'ai', text: 'Of course. It\'s a frosted glass effect using semi-transparent backgrounds and a backdrop blur. It gives the interface a modern, layered feel. The buttons and other elements have subtle 3D effects and magnification animations on hover to make them more interactive.' },
-        { role: 'ai', text: 'Of course. It\'s a frosted glass effect using semi-transparent backgrounds and a backdrop blur. It gives the interface a modern, layered feel. The buttons and other elements have subtle 3D effects and magnification animations on hover to make them more interactive.' },
-    ]);
+interface GlassyChatInterfaceProps {
+    messages: ChatMessage[];
+}
+
+export default function GlassyChatInterface({ messages }: GlassyChatInterfaceProps) {
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
 
-    // Scroll to the bottom when new messages are added
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -30,8 +24,13 @@ export default function GlassyChatInterface() {
     return (
         <>             
             <div ref={chatContainerRef} className="flex-1 w-full max-w-3xl font-sans space-y-4 overflow-y-auto glassy-scrollbar pr-2">
+                {messages.length === 0 && (
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text-neutral-400/60 text-sm">Start a conversation...</p>
+                    </div>
+                )}
                 {messages.map((msg, index) => (
-                    <ChatMessage key={index} message={msg} />
+                    <ChatMessageBubble key={index} message={msg} />
                 ))}
             </div>
 
@@ -40,7 +39,7 @@ export default function GlassyChatInterface() {
 }
 
 // --- Chat Message Component ---
-const ChatMessage = ({ message }: { message: Message }) => {
+const ChatMessageBubble = ({ message }: { message: ChatMessage }) => {
     const isUser = message.role === 'user';
 
     return (
@@ -59,12 +58,19 @@ const ChatMessage = ({ message }: { message: Message }) => {
                         : 'from-neutral-300/10 to-neutral-700/5'
                     }`}
             >
-                {message.text}
+                {isUser ? (
+                    message.prompt
+                ) : (
+                    <div className="[&>p]:mb-2 [&>p:last-child]:mb-0 [&_ol]:list-decimal [&_ol]:ml-5 [&_ul]:list-disc [&_ul]:ml-5 [&_li]:mb-1">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                        >
+                            {message.prompt}
+                        </ReactMarkdown>
+                    </div>
+                )}
             </div>
         </motion.div>
     );
 };
-
-
-
-

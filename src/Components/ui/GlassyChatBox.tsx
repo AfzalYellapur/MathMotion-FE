@@ -16,7 +16,7 @@ export default function GlassyChatbox({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      setPrompt("");
+      if (onClick) onClick();
     }
   };
 
@@ -30,7 +30,6 @@ export default function GlassyChatbox({
           placeholder={placeholder}
           className="w-full h-32 p-4 pr-20 bg-zinc-900/10 backdrop-blur-md border border-white/10 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),inset_0_-1px_1px_rgba(0,0,0,0.1)] text-white/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-white/20 transition-shadow duration-300 focus:shadow-[0_0_15px_rgba(255,255,255,0.1)] resize-none glassy-scrollbar "
         />
-        {/* Send button */}
         <div className="absolute top-4 right-4">
           <GlassyButton onClick={onClick}>
             <svg

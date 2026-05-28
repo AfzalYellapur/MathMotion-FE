@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @plugin 'tailwind-scrollbar';
 
-@theme{
-  --font-pixelify : "Pixelify Sans", sans-serif;
+@theme {
+  --font-pixelify: "Pixelify Sans", sans-serif;
 }
 
 .glassy-scrollbar::-webkit-scrollbar {
@@ -12,7 +13,8 @@
 
 .glassy-scrollbar::-webkit-scrollbar-track {
   background: transparent;
-  margin-block: 10px; /* prevents it from sticking to top/bottom edges */
+  margin-block: 10px;
+  /* prevents it from sticking to top/bottom edges */
   border-radius: 8px;
 }
 

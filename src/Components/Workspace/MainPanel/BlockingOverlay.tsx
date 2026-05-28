@@ -3,12 +3,12 @@ import GlassyButton from '../../ui/GlassyButton';
 interface BlockingOverlayProps {
     isVisible: boolean;
     status: string;
-    onReconnect?: () => void;
+    onCancel?: () => void;
 }
 
-const BlockingOverlay = ({ isVisible, status, onReconnect }: BlockingOverlayProps) => {
+const BlockingOverlay = ({ isVisible, status, onCancel }: BlockingOverlayProps) => {
 
-    const isDisconnected = (status === "Kernel disconnected" || status === "WebSocket error");
+    const isError = status === "Build Failed" || status === "Error";
 
     return (
         <AnimatePresence>
@@ -20,7 +20,7 @@ const BlockingOverlay = ({ isVisible, status, onReconnect }: BlockingOverlayProp
                     transition={{ duration: 0.5 }}
                     className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-800/20 backdrop-blur-sm border border-white/10 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),inset_0_-1px_1px_rgba(0,0,0,0.1)]"
                 >
-                    {!isDisconnected && (
+                    {!isError && (
                         <>
                             <motion.div
                                 style={{
@@ -41,18 +41,22 @@ const BlockingOverlay = ({ isVisible, status, onReconnect }: BlockingOverlayProp
                             >
                                 {status}
                             </motion.p>
+                            {onCancel && (
+                                <div className="mt-4">
+                                    <GlassyButton
+                                        background='bg-[#1e1e1e]'
+                                        onClick={onCancel}
+                                    >
+                                        Cancel
+                                    </GlassyButton>
+                                </div>
+                            )}
                         </>
                     )}
 
-                    {isDisconnected && (
+                    {isError && (
                         <>
-                            <p className="text-lg font-semibold text-white/90 mb-4">Server timed out. Due to inactivity</p>
-                            <GlassyButton
-                            background='bg-[#1e1e1e]'
-                                onClick={onReconnect}
-                            >
-                                Reconnect
-                            </GlassyButton>
+                            <p className="text-lg font-semibold text-white/90 mb-4">{status}</p>
                         </>
                     )}
                 </motion.div>

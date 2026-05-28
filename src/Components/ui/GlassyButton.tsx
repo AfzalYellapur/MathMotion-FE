@@ -6,21 +6,20 @@ interface GlassyButtonProps {
     onClick?: () => void;
     disabled?: boolean;
     background?: string;
+    className?: string;
+    scale?: number;
 }
 
-
-function GlassyButton({ children, onClick, disabled, background }: GlassyButtonProps) {
+function GlassyButton({ children, onClick, disabled, background, className, scale }: GlassyButtonProps) {
     const [isHovered, setIsHovered] = useState(false);
     const isTextNode = typeof children === 'string';
 
-    // Animation logic for non-text children (icons)
     const iconSpring = useSpring(0, { stiffness: 500, damping: 40 });
     useEffect(() => {
         iconSpring.set(isHovered ? 1 : 0);
     }, [isHovered, iconSpring]);
 
-    const iconScale = useTransform(iconSpring, [0, 1], [1, 1.2]);
-    // Animate the color property, which will be inherited by the SVG's stroke
+    const iconScale = useTransform(iconSpring, [0, 1], [1, scale ? scale : 1.2]);
     const iconColor = useTransform(iconSpring, [0, 1], ["rgb(161 161 170)", "rgb(255 255 255)"]);
 
     return (
@@ -28,7 +27,7 @@ function GlassyButton({ children, onClick, disabled, background }: GlassyButtonP
             onClick={onClick}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
-            className={`relative flex items-center justify-center ${background} rounded-full ${disabled && "cursor-not-allowed"} `}
+            className={`relative flex items-center ${className?.includes('justify-') ? '' : 'justify-center'} ${background} rounded-full ${disabled && "cursor-not-allowed"} ${className || ""}`}
         >
             <AnimatePresence>
                 {isHovered && (
@@ -42,7 +41,7 @@ function GlassyButton({ children, onClick, disabled, background }: GlassyButtonP
                     />
                 )}
             </AnimatePresence>
-            <div className={`relative z-10 ${isTextNode ? ("px-5 py-1.5"):("p-2")} font-semibold`}>
+            <div className={`relative z-10 ${isTextNode ? ("px-5 py-1.5") : ("p-2")} font-semibold`}>
                 {isTextNode ? (
                     <ButtonTextMagnifier text={children as string} isHovered={isHovered} />
                 ) : (
@@ -56,7 +55,6 @@ function GlassyButton({ children, onClick, disabled, background }: GlassyButtonP
 };
 
 
-// Dedicated Text component for the GlassyButton
 const ButtonTextMagnifier = ({ text, isHovered }: { text: string; isHovered: boolean; }) => {
     return (
         <span className="flex items-center">
@@ -67,17 +65,14 @@ const ButtonTextMagnifier = ({ text, isHovered }: { text: string; isHovered: boo
     );
 };
 
-// Dedicated Character component for the GlassyButton, now with corrected animation trigger
 const ButtonCharacter = ({ char, isHovered }: { char: string; isHovered: boolean; }) => {
     // Create the spring motion value once.
     const isUnderHighlight = useSpring(0, { stiffness: 500, damping: 40 });
 
-    // Use an effect to update the spring's value when `isHovered` changes.
     useEffect(() => {
         isUnderHighlight.set(isHovered ? 1 : 0);
     }, [isHovered, isUnderHighlight]);
 
-    // Map the spring value to scale and color
     const scale = useTransform(isUnderHighlight, [0, 1], [1, 1.2]);
     const color = useTransform(isUnderHighlight, [0, 1], ["rgb(161 161 170)", "rgb(255 255 255)"]);
 

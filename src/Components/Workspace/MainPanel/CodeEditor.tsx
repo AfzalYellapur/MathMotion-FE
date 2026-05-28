@@ -26,6 +26,5 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
       }}
     />
     </div>
-
   );
 }

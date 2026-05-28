@@ -1,10 +1,9 @@
 interface VideoPreviewProps {
-  videoData: string | null;
+  videoUrl: string | null;
   codeError: string | null;
-
 }
 
-export default function VideoPreview({ videoData, codeError }: VideoPreviewProps) {
+export default function VideoPreview({ videoUrl, codeError }: VideoPreviewProps) {
   if (codeError) {
     return (
       <div className="h-full border-4 border-zinc-900 rounded-2xl bg-black text-red-600 font-semibold">
@@ -13,14 +12,13 @@ export default function VideoPreview({ videoData, codeError }: VideoPreviewProps
         </div>
       </div>
     );
-  } else if (videoData) {
+  } else if (videoUrl) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="overflow-hidden rounded-xl">
           <video
             controls
-            style={{ display: videoData ? 'block' : 'none' }}
-            src={videoData || undefined}
+            src={videoUrl}
           />
         </div>
       </div>

@@ -1,19 +1,21 @@
-export interface Message {
-  sender: 'user' | 'ai';
-  text: string;
+export interface ChatMessage {
+  role: 'user' | 'ai';
+  prompt: string;
+  code?: string;
 }
 
-export interface KernelMessage {
-  header: {
-    msg_type: string;
-    msg_id: string;
-    username: string;
-    session: string;
-    version: string;
-  };
-  parent_header: {};
-  metadata: {};
-  content: any;
+export interface Project {
+  _id: string;
+  userId: string;
+  title: string;
+  chatHistory: ChatMessage[];
+  currentCode: string;
+  activeJobId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type RenderStatus = 'IDLE' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export type ViewType = 'editor' | 'preview';

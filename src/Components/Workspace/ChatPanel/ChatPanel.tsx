@@ -1,30 +1,24 @@
-// import type { Message } from '../types/index';
-import { useState } from "react";
 import GlassyChatbox from "../../ui/GlassyChatBox";
 import GlassyChatInterface from "../../ui/GlassyChatInterface";
-
-interface ChatDetails {
-  sessionId: string;
-  sender: string;
-  message: string;
-}
+import type { ChatMessage } from "../types";
 
 type ChatPanelProps = {
   setPrompt: (prompt: string) => void;
   prompt: string;
   onClick: (message?: string) => Promise<void>;
+  messages: ChatMessage[];
+  isLoading?: boolean;
 };
 
 export default function ChatPanel({
   setPrompt,
   prompt,
   onClick,
+  messages,
 }: ChatPanelProps) {
-  const [chatDetails, setChatDetails] = useState<ChatDetails[]>();
-
   return (
     <div className="w-[30%] p-2 flex flex-col">
-      <GlassyChatInterface />
+      <GlassyChatInterface messages={messages} />
       <GlassyChatbox prompt={prompt} setPrompt={setPrompt} onClick={onClick} />
     </div>
   );
