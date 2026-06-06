@@ -4,13 +4,11 @@ import ViewTabs from './ViewTabs';
 import CodeEditor from './CodeEditor';
 import VideoPreview from './VideoPreview';
 import BlockingOverlay from './BlockingOverlay';
-import GenerateButton from './GenerateButton';
 import GlassyButton from '../../ui/GlassyButton';
-
 interface MainPanelProps {
   view: ViewType;
   onViewChange: (view: ViewType) => void;
-  onBuild: () => void;
+  onBuild: (fileClass: string) => void;
   userCode: string;
   onCodeChange: (code: string) => void;
   videoUrl: string | null;
@@ -20,6 +18,8 @@ interface MainPanelProps {
   onCancelRender?: () => void;
   saveStatus: 'idle' | 'saving' | 'saved';
   onManualSave: () => void;
+  fileClass: string;
+  onFileClassChange: (className: string) => void;
 }
 
 export default function MainPanel({
@@ -35,14 +35,16 @@ export default function MainPanel({
   onCancelRender,
   saveStatus,
   onManualSave,
+  fileClass,
+  onFileClassChange
 }: MainPanelProps) {
   const isBuilding = renderStatus === 'PENDING' || renderStatus === 'PROCESSING';
-  const buildDisabled = isBuilding || isChatLoading || !userCode;
+  const buildDisabled = isBuilding || isChatLoading || !userCode || !fileClass.trim();
 
   const getOverlayStatus = (): string => {
-    if (isChatLoading) return 'Generating code...';
-    if (renderStatus === 'PENDING') return 'Queued...';
-    if (renderStatus === 'PROCESSING') return 'Rendering...';
+    if (isChatLoading) return 'Generating code';
+    if (renderStatus === 'PENDING') return 'Queued';
+    if (renderStatus === 'PROCESSING') return 'Rendering';
     return '';
   };
 
@@ -53,6 +55,13 @@ export default function MainPanel({
         <div className=' flex items-center gap-3'>
           <ViewTabs currentView={view} onViewChange={onViewChange} />
         </div>
+        <input
+          type="text"
+          value={fileClass}
+          onChange={(e) => onFileClassChange(e.target.value)}
+          placeholder="ClassName to Build"
+          className="w-80 bg-[#1e1e1e] text-center backdrop-blur-md border-[1.5px] border-transparent rounded-2xl px-3 py-1.5 text-sm text-white placeholder-white/40 focus:outline-none focus:border-white/45 transition-colors"
+        />
         <div className="flex items-center gap-3">
           <GlassyButton
             onClick={onManualSave}
@@ -84,7 +93,9 @@ export default function MainPanel({
               </svg>
             )}
           </GlassyButton>
-          <GenerateButton onGenerate={onBuild} disabled={buildDisabled} />
+          <GlassyButton onClick={() => onBuild(fileClass)} disabled={buildDisabled} background='bg-[#1e1e1e]'>
+            Build
+          </GlassyButton>
         </div>
       </div>
 

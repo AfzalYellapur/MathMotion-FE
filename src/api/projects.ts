@@ -35,3 +35,7 @@ export const buildProject = (id: string, fileClass?: string) => {
 export const cancelRender = (id: string) => {
   return apiClient.post(`/api/projects/${id}/cancel-render`);
 };
+
+export const updateProjectTitle = (id: string, title: string) => {
+  return apiClient.patch(`/api/projects/${id}/title`, { title });
+};

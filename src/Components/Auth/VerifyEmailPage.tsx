@@ -127,14 +127,14 @@ function VerifyEmailPage() {
                                 disabled={isLoading}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isLoading ? 'Verifying...' : 'Verify'}
+                                {isLoading ? 'Verifying' : 'Verify'}
                             </GlassyButton>
                             <GlassyButton
                                 onClick={handleResend}
                                 disabled={isResending}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isResending ? 'Sending...' : 'Resend OTP'}
+                                {isResending ? 'Sending' : 'Resend OTP'}
                             </GlassyButton>
                         </div>
                     </div>

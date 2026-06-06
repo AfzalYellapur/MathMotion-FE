@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GlassyButton from './GlassyButton';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getProjects, createProject, deleteProject, activateProject } from '../../api/projects';
+import { getProjects, createProject, deleteProject, activateProject, updateProjectTitle } from '../../api/projects';
 
 interface Project {
     _id: string;
@@ -21,6 +21,10 @@ export default function GlassySidebar() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [isCreating, setIsCreating] = useState(false);
 
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [tempTitle, setTempTitle] = useState("");
+    const [isSavingTitle, setIsSavingTitle] = useState(false);
+
     useEffect(() => {
         if (isOpen && isAuthenticated) {
             fetchProjects();
@@ -33,6 +37,25 @@ export default function GlassySidebar() {
             setProjects(response.data);
         } catch (err) {
             console.error('Failed to fetch projects:', err);
+        }
+    };
+
+    const handleSaveTitle = async (projectId: string) => {
+        if (isSavingTitle) return;
+        if (!tempTitle.trim()) {
+            setEditingId(null);
+            return;
+        }
+
+        setIsSavingTitle(true);
+        try {
+            await updateProjectTitle(projectId, tempTitle);
+            setProjects(prev => prev.map(p => p._id === projectId ? { ...p, title: tempTitle } : p));
+            setEditingId(null);
+        } catch (err) {
+            console.error('Failed to update title:', err);
+        } finally {
+            setIsSavingTitle(false);
         }
     };
 
@@ -152,27 +175,58 @@ export default function GlassySidebar() {
                         </div>
                     </div>
                     <div className="flex-grow space-y-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/40 scrollbar-thumb-rounded-full">
-                        {!isAuthenticated && (
-                            <p className="text-sm text-neutral-400/70 px-2 py-4">Login to see your projects</p>
-                        )}
-                        {isAuthenticated && projects.length === 0 && (
-                            <p className="text-sm text-neutral-400/70 px-2 py-4">No projects yet</p>
-                        )}
+                        {!isAuthenticated && (<p className="text-sm text-neutral-400/70 px-2 py-4">Login to see your projects</p>)}
+                        {isAuthenticated && projects.length === 0 && (<p className="text-sm text-neutral-400/70 px-2 py-4">No projects yet</p>)}
                         {projects.map((project) => (
-                            <div key={project._id} className="group relative flex items-center">
+                            <div key={project._id} className="group relative flex items-center gap-1 pr-2">
                                 <div className="flex-1 min-w-0">
-                                    <GlassyButton
-                                        background="bg-transparent"
-                                        onClick={() => handleSwitchProject(project._id)}
-                                        className="w-full justify-start px-2"
-                                        scale={1.1}
-                                    >
-                                        <span className="truncate block max-w-[220px] text-left">
-                                            {project.title}
-                                        </span>
-                                    </GlassyButton>
+                                    {editingId === project._id ? (
+                                        <input
+                                            type="text"
+                                            value={tempTitle}
+                                            onChange={(e) => setTempTitle(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle(project._id)}
+                                            onBlur={() => handleSaveTitle(project._id)}
+                                            autoFocus
+                                            disabled={isSavingTitle}
+                                            className="w-full bg-black/20 border border-white/20 outline-none text-white text-sm px-3 py-[9px]  rounded-full shadow-[inset_0_1px_3px_rgba(255,255,255,0.05)] ml-1"
+                                        />
+                                    ) : (
+                                        <GlassyButton
+                                            background="bg-transparent"
+                                            onClick={() => handleSwitchProject(project._id)}
+                                            className="w-full justify-start px-2"
+                                            scale={1.1}
+                                        >
+                                            <span className="truncate block max-w-[190px] text-left">
+                                                {project.title}
+                                            </span>
+                                        </GlassyButton>
+                                    )}
                                 </div>
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
+
+                                    {editingId === project._id ? (
+                                        <GlassyButton
+                                            background="bg-transparent"
+                                            onClick={() => handleSaveTitle(project._id)}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            disabled={isSavingTitle}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                        </GlassyButton>
+                                    ) : (
+                                        <GlassyButton
+                                            background="bg-transparent"
+                                            onClick={() => {
+                                                setEditingId(project._id);
+                                                setTempTitle(project.title);
+                                            }}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                        </GlassyButton>
+                                    )}
+
                                     <GlassyButton
                                         background="bg-transparent"
                                         onClick={() => handleDeleteProject(project._id)}

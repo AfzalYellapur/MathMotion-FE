@@ -4,13 +4,14 @@ import { motion, useSpring, useTransform, AnimatePresence } from 'framer-motion'
 interface GlassyButtonProps {
     children: React.ReactNode;
     onClick?: () => void;
+    onMouseDown?: React.MouseEventHandler<HTMLButtonElement>;
     disabled?: boolean;
     background?: string;
     className?: string;
     scale?: number;
 }
 
-function GlassyButton({ children, onClick, disabled, background, className, scale }: GlassyButtonProps) {
+function GlassyButton({ children, onClick, onMouseDown, disabled, background, className, scale }: GlassyButtonProps) {
     const [isHovered, setIsHovered] = useState(false);
     const isTextNode = typeof children === 'string';
 
@@ -25,6 +26,7 @@ function GlassyButton({ children, onClick, disabled, background, className, scal
     return (
         <motion.button
             onClick={onClick}
+            onMouseDown={onMouseDown}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
             className={`relative flex items-center ${className?.includes('justify-') ? '' : 'justify-center'} ${background} rounded-full ${disabled && "cursor-not-allowed"} ${className || ""}`}

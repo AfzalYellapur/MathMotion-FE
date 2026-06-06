@@ -3,6 +3,21 @@
 @import "tailwindcss";
 @plugin 'tailwind-scrollbar';
 
+/* --- Fix for Browser Autofill Background --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  /* Delays the browser's background color injection for 5000 seconds */
+  transition: background-color 5000s ease-in-out 0s !important;
+
+  /* Forces the text to stay white instead of turning black */
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+
+  /* Keeps the blinking cursor white */
+  caret-color: white !important;
+}
+
 @theme {
   --font-pixelify: "Pixelify Sans", sans-serif;
 }

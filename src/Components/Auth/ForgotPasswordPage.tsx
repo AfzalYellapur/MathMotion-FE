@@ -81,7 +81,7 @@ function ForgotPasswordPage() {
                                 disabled={isLoading}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isLoading ? 'Sending...' : 'Send Reset OTP'}
+                                {isLoading ? 'Sending' : 'Send Reset OTP'}
                             </GlassyButton>
                         </div>
                     </div>

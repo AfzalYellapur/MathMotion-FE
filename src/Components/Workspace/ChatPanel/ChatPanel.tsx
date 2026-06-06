@@ -7,7 +7,8 @@ type ChatPanelProps = {
   prompt: string;
   onClick: (message?: string) => Promise<void>;
   messages: ChatMessage[];
-  isLoading?: boolean;
+  isLoading: boolean;
+  onCancel: () => Promise<void>;
 };
 
 export default function ChatPanel({
@@ -15,11 +16,22 @@ export default function ChatPanel({
   prompt,
   onClick,
   messages,
+  isLoading,
+  onCancel
 }: ChatPanelProps) {
   return (
     <div className="w-[30%] p-2 flex flex-col">
-      <GlassyChatInterface messages={messages} />
-      <GlassyChatbox prompt={prompt} setPrompt={setPrompt} onClick={onClick} />
+      <GlassyChatInterface
+        messages={messages}
+        isLoading={isLoading}
+      />
+      <GlassyChatbox
+        prompt={prompt}
+        setPrompt={setPrompt}
+        onClick={onClick}
+        isLoading={isLoading}
+        onCancel={onCancel}
+      />
     </div>
   );
 }

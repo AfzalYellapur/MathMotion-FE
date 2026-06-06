@@ -162,7 +162,7 @@ function RegisterPage() {
                                 disabled={isLoading}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isLoading ? 'Creating...' : 'Create Account'}
+                                {isLoading ? 'Creating' : 'Create Account'}
                             </GlassyButton>
                         </div>
                     </div>

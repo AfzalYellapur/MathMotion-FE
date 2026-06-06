@@ -4,7 +4,7 @@ import ChatPanel from "./ChatPanel/ChatPanel";
 import MainPanel from "./MainPanel/MainPanel";
 import type { ViewType, ChatMessage, RenderStatus } from "./types";
 import PageTransition from "../ui/PageTransition";
-import { sendChat, saveCode, buildProject, cancelRender } from "../../api/projects";
+import { sendChat, saveCode, buildProject, cancelRender, cancelGeneration } from "../../api/projects";
 import { activateProject } from "../../api/projects";
 
 function Workspace() {
@@ -28,11 +28,9 @@ function Workspace() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const initialPromptSentRef = useRef(false);
 
-  // Load project data on mount
   useEffect(() => {
     if (!projectId) return;
 
-    // Reset state from previous project
     setVideoUrl(null);
     setCodeError(null);
     setRenderStatus("IDLE");
@@ -40,24 +38,14 @@ function Workspace() {
 
     const loadProject = async () => {
       try {
-        // Activate this project
         const response = await activateProject(projectId);
         const project = response.data.project;
         if (project) {
           setUserCode(project.currentCode || "");
           setMessages(project.chatHistory || []);
-          // Extract fileClass from last AI message if available
-          const lastAiMsg = [...(project.chatHistory || [])].reverse().find((m: ChatMessage) => m.role === 'ai' && m.code);
-          if (lastAiMsg) {
-            // Try to extract class name from code
-            const classMatch = lastAiMsg.code?.match(/class\s+(\w+)\s*\(/);
-            if (classMatch) {
-              setFileClass(classMatch[1]);
-            }
-          }
+          setFileClass(project.fileClass || "");
         }
       } catch (err: any) {
-        // If project not found, try fetching projects list
         if (err.response?.status === 404) {
           navigate('/');
         }
@@ -94,7 +82,6 @@ function Workspace() {
 
     setView("editor");
 
-    // Add user message to chat immediately
     const userMsg: ChatMessage = { role: 'user', prompt: text };
     setMessages(prev => [...prev, userMsg]);
     setPrompt("");
@@ -104,26 +91,32 @@ function Workspace() {
       const response = await sendChat(projectId, text);
       const { explanation, code, fileClass: fc } = response.data;
 
-      // Add AI response to chat
+
+      // 3. Auto-fill the inputs with the AI's response!
+      setUserCode(response.data.code);
+
+      // Assuming your backend returns { fileClass: "MyScene" }
+      if (response.data.fileClass) {
+        setFileClass(response.data.fileClass);
+      }
+
       const aiMsg: ChatMessage = { role: 'ai', prompt: explanation, code };
       setMessages(prev => [...prev, aiMsg]);
 
-      // Update code in editor
       if (code) {
         setUserCode(code);
       }
 
-      // Store fileClass for build
       if (fc) {
         setFileClass(fc);
       }
     } catch (err: any) {
       const message = err.response?.data?.error;
       if (err.response?.status === 429) {
-        const aiMsg: ChatMessage = { role: 'ai', prompt: '⚠️ Rate limited. Please wait a minute before sending another message.' };
+        const aiMsg: ChatMessage = { role: 'ai', prompt: 'Rate limited. Please wait a minute before sending another message.' };
         setMessages(prev => [...prev, aiMsg]);
       } else if (message !== 'Generation was cancelled') {
-        const aiMsg: ChatMessage = { role: 'ai', prompt: `❌ Error: ${message || 'Failed to generate code'}` };
+        const aiMsg: ChatMessage = { role: 'ai', prompt: `Error: ${message || 'Failed to generate code'}` };
         setMessages(prev => [...prev, aiMsg]);
       }
     } finally {
@@ -131,7 +124,6 @@ function Workspace() {
     }
   };
 
-  // Debounced Auto-Save
   const handleCodeChange = useCallback((code: string) => {
     setUserCode(code);
     setSaveStatus('idle');
@@ -144,7 +136,6 @@ function Workspace() {
       if (projectId && code) {
         setSaveStatus('saving');
         try {
-          // Promise.all ensures the "saving" state shows for a minimum of 500ms
           await Promise.all([
             saveCode(projectId, code),
             new Promise(resolve => setTimeout(resolve, 500))
@@ -159,11 +150,9 @@ function Workspace() {
     }, 1000);
   }, [projectId]);
 
-  // New Manual Save Handler
   const handleManualSave = async () => {
     if (!projectId || !userCode || saveStatus === 'saving') return;
 
-    // Clear any pending auto-saves so we don't save twice
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
@@ -182,8 +171,7 @@ function Workspace() {
     }
   };
 
-  // Build / Render
-  const handleBuild = async () => {
+  const handleBuild = async (fileClass: string) => {
     if (!projectId || !userCode) return;
 
     setRenderStatus("PENDING");
@@ -193,8 +181,6 @@ function Workspace() {
 
     try {
       await buildProject(projectId, fileClass);
-
-      // Open SSE stream for render status
       openStatusStream();
     } catch (err: any) {
       const message = err.response?.data?.error;
@@ -207,7 +193,6 @@ function Workspace() {
     }
   };
 
-  // SSE stream for render status
   const openStatusStream = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -215,7 +200,7 @@ function Workspace() {
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const eventSource = new EventSource(
-      `${backendUrl}/api/projects/${projectId}/status/stream`,
+      `${backendUrl}api/projects/${projectId}/status/stream`,
       { withCredentials: true }
     );
     eventSourceRef.current = eventSource;
@@ -257,12 +242,9 @@ function Workspace() {
     eventSource.onerror = () => {
       console.error('SSE connection error');
       eventSource.close();
-      // Don't set FAILED — might just be a network blip
-      // The user can click Build again
     };
   };
 
-  // Cancel render
   const handleCancelRender = async () => {
     if (!projectId) return;
     try {
@@ -276,6 +258,17 @@ function Workspace() {
     }
   };
 
+  const handleCancelChat = async () => {
+    if (!projectId || !isChatLoading) return;
+    try {
+      await cancelGeneration(projectId);
+    } catch (error) {
+      console.error("Failed to cancel generation", error);
+    }
+  };
+
+
+
   return (
     <PageTransition>
       <div className="flex h-screen">
@@ -285,12 +278,13 @@ function Workspace() {
           onClick={() => handleSendPrompt()}
           messages={messages}
           isLoading={isChatLoading}
+          onCancel={() => handleCancelChat()}
         />
 
         <MainPanel
           view={view}
           onViewChange={setView}
-          onBuild={handleBuild}
+          onBuild={() => handleBuild(fileClass)}
           userCode={userCode}
           onCodeChange={handleCodeChange}
           videoUrl={videoUrl}
@@ -300,6 +294,8 @@ function Workspace() {
           onCancelRender={handleCancelRender}
           saveStatus={saveStatus}
           onManualSave={handleManualSave}
+          fileClass={fileClass}
+          onFileClassChange={setFileClass}
         />
       </div>
     </PageTransition>

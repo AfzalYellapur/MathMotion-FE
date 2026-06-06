@@ -189,7 +189,7 @@ function ResetPasswordPage() {
                                 disabled={isLoading}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isLoading ? 'Resetting...' : 'Reset Password'}
+                                {isLoading ? 'Resetting' : 'Reset Password'}
                             </GlassyButton>
                         </div>
                     </div>

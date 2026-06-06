@@ -46,10 +46,10 @@ function Landing() {
         {!isAuthenticated && !isLoading && (
           <div className="flex gap-x-2 p-1 bg-zinc-900/10 backdrop-blur-md border border-white/10 bg-gradient-to-b from-white/10 to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),inset_0_-1px_1px_rgba(0,0,0,0.1)] text-white/80 rounded-full ">
             <>
-              <GlassyButton background="bg-transparent" onClick={()=>navigate("/login")}>
+              <GlassyButton background="bg-transparent" onClick={() => navigate("/login")}>
                 Login
               </GlassyButton>
-              <GlassyButton background="bg-transparent" onClick={()=>navigate("/register")}>
+              <GlassyButton background="bg-transparent" onClick={() => navigate("/register")}>
                 Register
               </GlassyButton>
             </>
@@ -70,7 +70,7 @@ function Landing() {
           onClick={handleSendpr}
           setPrompt={setPrompt}
           prompt={prompt}
-          placeholder="Type your concept here and we will bring it to life..."
+          placeholder="Type your concept here and we will bring it to life."
         />
       </div>
     </PageTransition>

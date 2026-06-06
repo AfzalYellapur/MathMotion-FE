@@ -16,7 +16,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen bg-black">
-        <p className="text-white/60 text-lg">Loading...</p>
+        <p className="text-white/60 text-lg">Loading</p>
       </div>
     );
   }

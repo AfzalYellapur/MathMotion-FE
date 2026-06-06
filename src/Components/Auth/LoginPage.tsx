@@ -131,7 +131,7 @@ function LoginPage() {
                                 disabled={isLoading}
                                 background='bg-[#1e1e1e]'
                             >
-                                {isLoading ? 'Logging in...' : 'Login'}
+                                {isLoading ? 'Logging in' : 'Login'}
                             </GlassyButton>
                         </div>
                     </div>
